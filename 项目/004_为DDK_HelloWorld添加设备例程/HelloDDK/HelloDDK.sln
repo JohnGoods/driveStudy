@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HelloDDK", "HelloDDK\HelloDDK.vcproj", "{EF62679F-3C36-4F02-9890-5CB9D5CD4115}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		check = check
+		Debug = Debug
+		Release = Release
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{EF62679F-3C36-4F02-9890-5CB9D5CD4115}.check.ActiveCfg = check|Win32
+		{EF62679F-3C36-4F02-9890-5CB9D5CD4115}.check.Build.0 = check|Win32
+		{EF62679F-3C36-4F02-9890-5CB9D5CD4115}.Debug.ActiveCfg = Debug|Win32
+		{EF62679F-3C36-4F02-9890-5CB9D5CD4115}.Debug.Build.0 = Debug|Win32
+		{EF62679F-3C36-4F02-9890-5CB9D5CD4115}.Release.ActiveCfg = Release|Win32
+		{EF62679F-3C36-4F02-9890-5CB9D5CD4115}.Release.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

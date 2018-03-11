@@ -1,0 +1,22 @@
+typedef struct _DRIVER_OBJECT {
+    CSHORT Type; //结构类型
+    CSHORT Size; //结构大小
+    PDEVICE_OBJECT DeviceObject; //驱动设备对象 这个在后边会详解
+    PDRIVER_EXTENSION DriverExtension; //驱动扩展指针 
+    UNICODE_STRING DriverName; //驱动程序的名字
+    PDRIVER_UNLOAD DriverUnload; //驱动的卸载函数
+    PDRIVER_DISPATCH MajorFunction[IRP_MJ_MAXIMUM_FUNCTION + 1]; //普通的分发函数
+
+} DRIVER_OBJECT;
+typedef struct _DRIVER_OBJECT *PDRIVER_OBJECT; 
+
+ypedef struct DECLSPEC_ALIGN(MEMORY_ALLOCATION_ALIGNMENT) _DEVICE_OBJECT { //设备对象
+    CSHORT Type;//结构类型
+    USHORT Size;//结构大小
+    LONG ReferenceCount; //引用计数
+    struct _DRIVER_OBJECT *DriverObject; //这个设备所属对象
+    struct _DEVICE_OBJECT *NextDevice; //指向下一个设备。
+   //在一个驱动对象中有N个设备，这些设备通过这个指针链接起来作为一个单向链表
+    ULONG Flags;                   
+    struct _DEVOBJ_EXTENSION  *DeviceObjectExtension;
+ } DEVICE_OBJECT;
