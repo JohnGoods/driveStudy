@@ -1,0 +1,5 @@
+Net start "VMware Agent Service"
+Net start "VMware Aythorization Service"
+Net start "VMware DHCP Service"
+Net start "VMware NAT Service"
+Net start "VMware Virtual Mount Manager Extended"

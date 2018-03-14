@@ -1,0 +1,5 @@
+Net stop "VMware Agent Service"
+Net stop "VMware Aythorization Service"
+Net stop "VMware DHCP Service"
+Net stop "VMware NAT Service"
+Net stop "VMware Virtual Mount Manager Extended"
