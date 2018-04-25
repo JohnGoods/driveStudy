@@ -1,0 +1,1 @@
+原来的代码是VS2010编译的，现升级为VS2013后出现VS2013error MSB8031: Building an MFC project for a non-Unicode character set is deprecated。. You must change the project property to Unicode or download an additional library. See http://go.microsoft.com/fwlink/p/?LinkId=286820 for more information.
