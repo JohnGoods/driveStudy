@@ -1,0 +1,16 @@
+ __asm //去掉页面保护
+		{
+			cli
+			mov eax,cr0
+			and eax,not 10000h //and eax,0FFFEFFFFh
+			mov cr0,eax
+
+		}
+
+ __asm //恢复页保护
+		 {
+			mov eax,cr0
+			or  eax,10000h //or eax,not 0FFFEFFFFh
+			mov cr0,eax
+			sti
+		 }
