@@ -119,9 +119,17 @@ ULONG64 GetProcAddress(PSTR FunName)
 	return (ULONG64)MmGetSystemRoutineAddress(&FunNameUnicode);
 }
 
+/*
+首先介绍一下 ObRegisterCallbacks 这个函数。此函数的前缀是Ob，看得出它是属于对象管理器的函数，Register 是注册，Callbacks 是回调（复数）。
+因此从字面意思上看，它是注册一个对象回调的意思。现在它只能监控进程对象和线程对象。但微软承诺会给此函数增加功能，实现对其它内核对象的监控。
+这个函数在不能合法进行内核挂钩的 WIN64 上特别有用，但是微软做了一个很扯淡的限制： 驱动程序必须有数字签名才能使用 此函数。
+不过国外的黑客对此限制很不爽，他们通过逆向 ObRegisterCallbacks，找到了破解这个限制的方法。经研究，
+内核通过 MmVerifyCallbackFunction 验证此回调是否合法，但此函数只是简单的验证了一下 DriverObject->DriverSection->Flags 的值是不是为 0x20：
+所以可以简单破解掉这个限制：*/
 //功能:过注册回调判断
 void BypassCheckSign(PDRIVER_OBJECT pDriverObj)
 {
+	/*blog.csdn.net/u013761036/article/details/61465245*/
 	PLDR_DATA_TABLE_ENTRY ldr = (PLDR_DATA_TABLE_ENTRY)pDriverObj->DriverSection;
 	ldr->Flags |= 0x20;
 }
@@ -422,6 +430,7 @@ HANDLE MyOpenProcess(IN HANDLE ProcessId)
 }
 BOOLEAN MyZwReadVirtualMemory(IN HANDLE ProcessHandle, IN PVOID BaseAddress, OUT PVOID Buffer, IN ULONG NumberOfBytesToRead)
 {
+	DbgPrint("[KrnlHW64]->MyZwReadVirtualMemory\n");
 	DWORD NumberOfBytesReaded;
 	typedef NTSTATUS(NTAPI *Q_ZwReadVirtualMemory)(HANDLE, PVOID, PVOID, ULONG, PULONG);
 	return ((Q_ZwReadVirtualMemory)ZwReadVirtualMemory)(ProcessHandle, BaseAddress, Buffer, NumberOfBytesToRead, &NumberOfBytesReaded);
@@ -585,7 +594,7 @@ PVOID GetNtKrnlFuncAddress(PVOID ImageBase, BOOLEAN IsValidImageBase, CHAR *Func
 	FunctionIndex = GetFunctionIndex(FunctionAddress);
 
 #ifdef _M_X64
-	DbgPrint("[hdlphook] GetNtKrnlFuncAddress Imagebases:0x%I64X funcaddrss:0x%I64X index:%d\n", ImageBase, FunctionAddress, FunctionIndex);
+	DbgPrint("[hdlphook]->_MX64_->GetNtKrnlFuncAddress Imagebases:0x%I64X funcaddrss:0x%I64X index:%d\n", ImageBase, FunctionAddress, FunctionIndex);
 #else 
 	DbgPrint("[hdlphook] GetNtKrnlFuncAddress Imagebases:%08x funcaddrss:%08x index:%d\n", ImageBase, FunctionAddress, FunctionIndex);
 #endif

@@ -1,6 +1,6 @@
-/*
-WIN64��������ģ��
-���ߣ�Tesla.Angela
+﻿/*
+WIN64驱动开发模板
+作者：Tesla.Angela
 */
 
 
@@ -50,7 +50,7 @@ SYMBOLS_INFO	SymbolsInfo = { 0 };
 #define LINK_GLOBAL_NAME	L"\\DosDevices\\Global\\FacKProtects"
 
 
-//����:���ж�,����IRQL
+//功能:关中断,调升IRQL
 KIRQL cli()
 {
 	KIRQL irql = KeRaiseIrqlToDpcLevel();
@@ -61,7 +61,7 @@ KIRQL cli()
 	return irql;
 }
 
-//����:���ж�,�ظ�IRQL
+//功能:开中断,回复IRQL
 void sti(
 	IN KIRQL irql)
 {
@@ -72,20 +72,22 @@ void sti(
 	KeLowerIrql(irql);
 }
 
-//����:��ʼ�����������
+//功能:初始化反汇编引擎
 void LDE_init()
 {
 	LDE = ExAllocatePool(NonPagedPool, 12800);
 	memcpy(LDE, szShellCode, 12800);
 }
 
-//����:��ʼ����������
+//功能:初始化导出函数 用于过滤游戏打开保护进程权限
 VOID InitFunName()
 {
+	//方法1：ssdt hook  对付gpk的 inline hook , 难点是 hook掉 call 后面的函数地址，
+	//（hook ObCheckObjectAccess）
 	ObCheckObjectAccess = GetProcAddress(L"ObCheckObjectAccess");
 }
 
-//����:��ʼ�����ź���
+//功能:初始化符号函数
 VOID InitSymbolsAddr(
 	IN PSYMBOLS_INFO InBuffer)
 {
@@ -112,7 +114,7 @@ VOID DriverUnload(
 
 	g_delete_driver = TRUE;
 
-	liInterval.QuadPart = -10 * 1000 * 1000 * 2; ////�ӳ�5��������  ;
+	liInterval.QuadPart = -10 * 1000 * 1000 * 2; ////延迟5秒钟运行  ;
 	KeDelayExecutionThread(KernelMode, TRUE, &liInterval);
 
 	if (g_start_hook)
@@ -153,13 +155,25 @@ VOID DriverUnload(
 
 	DbgPrint("[KrnlHW64]DriverUnload\n");
 
-	//ɾ���������Ӻ��豸
+	//删除符号连接和设备
 	RtlInitUnicodeString(&strLink, LINK_NAME);
 	IoDeleteSymbolicLink(&strLink);
 	IoDeleteDevice(pDriverObj->DeviceObject);
 }
 
 
+/*
+//IoStatus.Status 状态
+STATUS_SUCCESS	正常完成
+STATUS_UNSUCCESSFUL	请求失败，没有描述失败原因的代码
+STATUS_NOT_IMPLEMENTED	一个没有实现的功能
+STATUS_INVALID_HANDLE	提供给该操作的句柄无效
+STATUS_INVALID_PARAMETER	参数错误
+STATUS_INVALID_DEVICE_REQUEST	该请求对这个设备无效
+STATUS_END_OF_FILE	到达文件尾
+STATUS_DELETE_PENDING	设备正处于被从系统中删除过程中
+STATUS_INSUFFICIENT_RESOURCES	没有足够的系统资源(通常是内存)来执行该操作
+*/
 NTSTATUS DispatchCreate(
 	IN PDEVICE_OBJECT pDevObj, 
 	IN PIRP pIrp)
@@ -201,6 +215,7 @@ NTSTATUS DispatchIoctl(
 	InSize = Irpstack->Parameters.DeviceIoControl.InputBufferLength;
 	OutSize = Irpstack->Parameters.DeviceIoControl.OutputBufferLength;
 
+	DbgPrint("[KrnlHW64]->ControlCode----???\n");
 	switch (ControlCode)
 	{
 	case IOCTL_SymbolsInfo:
@@ -212,11 +227,11 @@ NTSTATUS DispatchIoctl(
 			SymbolsInfo = *InBuffer;
 			
 			change_shadow_service(TRUE);
-			InitSymbolsAddr(InBuffer);	//����:��ʼ�����ź���
-			change_ssdt_hook(TRUE);	//����: hook��ַ���ӹܵ�ַ��ԭʼ���ݵ�ַ���������ȣ����أ�ԭ��ͷN�ֽڵ�����
-			chang_VaildAccessMask(TRUE);	//����Ȩ��
-			change_anitanit_debug(TRUE);
-			change_debugport_offset(TRUE);	//���Զ˿���λ
+			InitSymbolsAddr(InBuffer);	//功能:初始化符号函数
+			change_ssdt_hook(TRUE);		//传入: hook地址，接管地址，原始数据地址，补丁长度；返回：原来头N字节的数据
+			chang_VaildAccessMask(TRUE);	//调试权限
+			change_anitanit_debug(TRUE);	//过滤游戏打开保护进程权限
+			change_debugport_offset(TRUE);	//调试端口移位
 			
 			g_start_hook = TRUE;
 
@@ -269,54 +284,62 @@ NTSTATUS DispatchIoctl(
 }
 
 
-
+//入口
 NTSTATUS DriverEntry(
-	IN PDRIVER_OBJECT pDriverObj, 
-	IN PUNICODE_STRING pRegistryString)
+	IN PDRIVER_OBJECT pDriverObj,	//指向一个 DRIVER_OBJECT 结构体，它是WDM驱动的对象
+	IN PUNICODE_STRING pRegistryString)	//指向一个 UNICODE_STRING 结构体，他指定了驱动关键参数在注册表中的路径
 {
-	PVOID nt_imagebase;
-	NTSTATUS status = STATUS_SUCCESS;
-	UNICODE_STRING ustrLinkName;
-	UNICODE_STRING ustrDevName;
-	PDEVICE_OBJECT pDevObj;
+	PVOID nt_imagebase;	//普通指针类型
+	NTSTATUS status = STATUS_SUCCESS;	//无符号长整型
+	UNICODE_STRING ustrLinkName;	// Unicode 字符串
+	UNICODE_STRING ustrDevName;	// Unicode 字符串
+	PDEVICE_OBJECT pDevObj;	//指向DEVICE_OBJECT类型(IoCreateDevice)
 
 	Selfdriverobject = pDriverObj;
 	
-	pDriverObj->MajorFunction[IRP_MJ_CREATE] = DispatchCreate;
-	pDriverObj->MajorFunction[IRP_MJ_CLOSE] = DispatchClose;
-	pDriverObj->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DispatchIoctl;
-	pDriverObj->DriverUnload = DriverUnload;
+	/*blog.csdn.net/raiky/article/details/5745614*/
+	pDriverObj->MajorFunction[IRP_MJ_CREATE] = DispatchCreate;	//创建设备，CreatFile会产生此IRP DispatchCreate()
+	pDriverObj->MajorFunction[IRP_MJ_CLOSE] = DispatchClose;	//关闭设备，CloseHandle会产生此IRP DispatchClose()
+	pDriverObj->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DispatchIoctl;	//DeviceIoControl函数会产生此IR	DispatchIoctl()
+	pDriverObj->DriverUnload = DriverUnload;	//卸载驱动调用 DriverUnload()
 
-	RtlInitUnicodeString(&ustrDevName, DEVICE_NAME);
+	RtlInitUnicodeString(&ustrDevName, DEVICE_NAME);	//DEVICE_NAME = L"\\Device\\FacKProtects"
+
+	/*blog.csdn.net/zacklin/article/details/7600965 ----> IoCreateDevice解释  */
+	//IoCreateDevice函数创建设备对象
 	status = IoCreateDevice(pDriverObj, 0, &ustrDevName, FILE_DEVICE_UNKNOWN, 0, FALSE, &pDevObj);
-	if (!NT_SUCCESS(status))	return status;
-	if (IoIsWdmVersionAvailable(1, 0x10))
-		RtlInitUnicodeString(&ustrLinkName, LINK_GLOBAL_NAME);
-	else
-		RtlInitUnicodeString(&ustrLinkName, LINK_NAME);
+	if(!NT_SUCCESS(status)){
+		DbgPrint("[KrnlHW64]创建设备失败\n");
+		return status;
+	}
 
+	//判断操作系统的小技巧（来自WDK）
+	if(IoIsWdmVersionAvailable(1, 0x10)){	//this is Windows 2000 (Win2K)
+		RtlInitUnicodeString(&ustrLinkName, LINK_GLOBAL_NAME);	//L"\\DosDevices\\Global\\FacKProtects"
+	}else{	//Xp Win7?
+		RtlInitUnicodeString(&ustrLinkName, LINK_NAME);	//L"\\DosDevices\\FacKProtects"
+	}
+	
+	//创建符号链接
 	status = IoCreateSymbolicLink(&ustrLinkName, &ustrDevName);
 	if (!NT_SUCCESS(status))
 	{
+		DbgPrint("[KrnlHW64]创建符号链接失败\n");
 		IoDeleteDevice(pDevObj);
 		return status;
 	}
-	DbgPrint("[KrnlHW64]DriverEntry\n");
 
-	//change_shadow_service(TRUE);
-	//InitSymbolsAddr(InBuffer);	//����:��ʼ�����ź���
-	//change_ssdt_hook(TRUE);	//����: hook��ַ���ӹܵ�ַ��ԭʼ���ݵ�ַ���������ȣ����أ�ԭ��ͷN�ֽڵ�����
-	chang_VaildAccessMask(TRUE);	//����Ȩ��
-	//change_anitanit_debug(TRUE);
-	//change_debugport_offset(TRUE);	//���Զ˿���λ
+	DbgPrint("[KrnlHW64]DriverEntry(Driver进入)\n");
 
+	//pDriverObj->DriverStart;
+	//pDriverObj->DriverSize;
 	SelfdriverBase = pDriverObj->DriverStart;
 	Selfdriverlimit = pDriverObj->DriverSize;
 
-	LDE_init();	//��ʼ�����������
-	InitFunName();	//��ʼ����������
-	BypassCheckSign(pDriverObj);
-	nt_imagebase = GetDirverBase("ntdll.dll");
+	LDE_init();	//初始化反汇编引擎
+	InitFunName();	//初始化导出函数	赋值用于过滤游戏打开保护进程权限
+	BypassCheckSign(pDriverObj);	//过注册回调判断
+	nt_imagebase = GetDirverBase("ntdll.dll");	//功能:模块名称,地址 (应该是获得模块地址)
 
 	ZwReadVirtualMemory = GetNtKrnlFuncAddress(nt_imagebase, TRUE, "ZwReadVirtualMemory");
 	ZwWriteVirtualMemory = GetNtKrnlFuncAddress(nt_imagebase, TRUE, "ZwWriteVirtualMemory");
@@ -324,7 +347,7 @@ NTSTATUS DriverEntry(
 	ZwQueryInformationProcess = GetNtKrnlFuncAddress(nt_imagebase, TRUE, "ZwQueryInformationProcess");
 	
 
-	//HideDriver("kdbazis.dll", pDriverObj);
+	//HideDriver("kdbazis.dll", pDriverObj);	//隐藏驱动
 	SystemProcess = PsGetCurrentProcess();
 	PsLookupProcessByProcessName("csrss.exe", &CsrssProcess);
 	PsLookupProcessByProcessName("explorer.exe", &win32k_Process);
@@ -341,7 +364,6 @@ NTSTATUS DriverEntry(
 	{
 		g_thread_callback = TRUE;
 	}
-	DbgPrint("[KrnlHW64]DriverEntry_OVER \n");
 	return STATUS_SUCCESS;
 }
 
