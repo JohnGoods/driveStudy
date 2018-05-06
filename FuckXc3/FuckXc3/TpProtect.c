@@ -91,17 +91,29 @@ VOID InitFunName()
 VOID InitSymbolsAddr(
 	IN PSYMBOLS_INFO InBuffer)
 {
+	DbgPrint("[KrnlHW64]->12\n");
 	QNtClose = read_ssdt_funaddr(12);
+	//DbgPrint("[KrnlHW64]->64\n");
 	NtContinue = read_ssdt_funaddr(64);
+	//DbgPrint("[KrnlHW64]->82\n");
 	QNtCreateFile = read_ssdt_funaddr(82);
+	//DbgPrint("[KrnlHW64]->13\n");
 	QNtQueryObject = read_ssdt_funaddr(13);
+	//DbgPrint("[KrnlHW64]->20\n");
 	NtQueryValueKey = read_ssdt_funaddr(20);
+	//DbgPrint("[KrnlHW64]->66\n");
 	NtQueueApcThread = read_ssdt_funaddr(66);
+	//DbgPrint("[KrnlHW64]->67\n");
 	NtYieldExecution = read_ssdt_funaddr(67);
+	//DbgPrint("[KrnlHW64]->378\n");
 	NtSuspendProcess = read_ssdt_funaddr(378);
+	//DbgPrint("[KrnlHW64]->165\n");
 	NtCreateThreadEx = read_ssdt_funaddr(165);
+	//DbgPrint("[KrnlHW64]->87\n");
 	NtQuerySystemTime = read_ssdt_funaddr(87);
+	//DbgPrint("[KrnlHW64]->337\n");
 	NtSetDebugFilterState = read_ssdt_funaddr(337);
+	//DbgPrint("[KrnlHW64]->46\n");
 	NtQueryPerformanceCounter = read_ssdt_funaddr(46);
 }
 
@@ -215,7 +227,7 @@ NTSTATUS DispatchIoctl(
 	InSize = Irpstack->Parameters.DeviceIoControl.InputBufferLength;
 	OutSize = Irpstack->Parameters.DeviceIoControl.OutputBufferLength;
 
-	DbgPrint("[KrnlHW64]->ControlCode----???\n");
+	DbgPrint("[KrnlHW64]->ControlCode----???%d\n",ControlCode);
 	switch (ControlCode)
 	{
 	case IOCTL_SymbolsInfo:
@@ -227,12 +239,16 @@ NTSTATUS DispatchIoctl(
 			SymbolsInfo = *InBuffer;
 			
 			change_shadow_service(TRUE);
+			DbgPrint("[KrnlHW64]初始化符号函数\n");
 			InitSymbolsAddr(InBuffer);	//功能:初始化符号函数
+			DbgPrint("[KrnlHW64]hook地址，接管地址，原始数据地址，补丁长度；返回：原来头N字节的数据\n");
 			change_ssdt_hook(TRUE);		//传入: hook地址，接管地址，原始数据地址，补丁长度；返回：原来头N字节的数据
+			DbgPrint("[KrnlHW64]调试权限\n");
 			chang_VaildAccessMask(TRUE);	//调试权限
+			DbgPrint("[KrnlHW64]过滤游戏打开保护进程权限\n");
 			change_anitanit_debug(TRUE);	//过滤游戏打开保护进程权限
+			DbgPrint("[KrnlHW64]调试端口移位\n");
 			change_debugport_offset(TRUE);	//调试端口移位
-			
 			g_start_hook = TRUE;
 
  			PsCreateSystemThread(
@@ -304,7 +320,7 @@ NTSTATUS DriverEntry(
 	pDriverObj->DriverUnload = DriverUnload;	//卸载驱动调用 DriverUnload()
 
 	RtlInitUnicodeString(&ustrDevName, DEVICE_NAME);	//DEVICE_NAME = L"\\Device\\FacKProtects"
-
+	DbgPrint("[KrnlHW64]--->\\Device\\FacKProtects\n");
 	/*blog.csdn.net/zacklin/article/details/7600965 ----> IoCreateDevice解释  */
 	//IoCreateDevice函数创建设备对象
 	status = IoCreateDevice(pDriverObj, 0, &ustrDevName, FILE_DEVICE_UNKNOWN, 0, FALSE, &pDevObj);
@@ -316,8 +332,10 @@ NTSTATUS DriverEntry(
 	//判断操作系统的小技巧（来自WDK）
 	if(IoIsWdmVersionAvailable(1, 0x10)){	//this is Windows 2000 (Win2K)
 		RtlInitUnicodeString(&ustrLinkName, LINK_GLOBAL_NAME);	//L"\\DosDevices\\Global\\FacKProtects"
+		DbgPrint("[KrnlHW64]--->\\DosDevices\\Global\\FacKProtects\n");
 	}else{	//Xp Win7?
 		RtlInitUnicodeString(&ustrLinkName, LINK_NAME);	//L"\\DosDevices\\FacKProtects"
+		DbgPrint("[KrnlHW64]--->\\Device\\FacKProtects\n");
 	}
 	
 	//创建符号链接
