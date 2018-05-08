@@ -228,6 +228,8 @@ NTSTATUS DispatchIoctl(
 	OutSize = Irpstack->Parameters.DeviceIoControl.OutputBufferLength;
 
 	DbgPrint("[KrnlHW64]->ControlCode----???%d\n",ControlCode);
+	DbgPrint("[KrnlHW64]->IOCTL_SymbolsInfo----???%d\n", IOCTL_SymbolsInfo);
+	DbgPrint("[KrnlHW64]->IOCTL_CallBack----???%d\n", IOCTL_CallBack);
 	switch (ControlCode)
 	{
 	case IOCTL_SymbolsInfo:
@@ -235,6 +237,7 @@ NTSTATUS DispatchIoctl(
 		//DbgBreakPoint();
 		__try
 		{
+			DbgPrint("[KrnlHW64]--->InitDisablePatchGuard\n");
 			InitDisablePatchGuard();
 			SymbolsInfo = *InBuffer;
 			

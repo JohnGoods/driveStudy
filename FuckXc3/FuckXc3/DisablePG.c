@@ -220,6 +220,7 @@ VOID DisablePatchProtectionSystemThreadRoutine(
 	}
 }
 
+//??
 NTSTATUS DisablePatchProtection() {
 	OBJECT_ATTRIBUTES Attributes;
 	NTSTATUS          Status;
