@@ -1,0 +1,8 @@
+TARGETNAME=tpdebug
+TARGETTYPE=DRIVER
+TARGETPATH=SYS
+
+
+SOURCES=driverModel.c\
+		
+		
